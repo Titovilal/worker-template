@@ -1,23 +1,22 @@
 import runpod
 import os
 import base64
-from comfy_serverless import execute_inpainting_workflow
-from utils import save_image, get_input_data
+from comfy_serverless import execute_workflow, save_image_to_path, validate_input
 
 
 def handler(event: dict) -> dict:
     """Handler for the RunPod serverless API"""
-    input_data = get_input_data(event)
+    input_data = validate_input(event)
 
     input_dir = "ComfyUI/input"
     image_path = os.path.join(input_dir, "tmp.png")
     mask_path = os.path.join(input_dir, "tmp-mask.png")
 
     try:
-        save_image(input_data.get("image"), image_path)
-        save_image(input_data.get("mask"), mask_path)
+        save_image_to_path(input_data.get("image"), image_path)
+        save_image_to_path(input_data.get("mask"), mask_path)
 
-        images = execute_inpainting_workflow(
+        images = execute_workflow(
             input_data.get("positive_prompt"),
             input_data.get("negative_prompt"),
             input_data.get("seed"),

@@ -4,6 +4,12 @@ import websocket
 import uuid
 import io
 from PIL import Image
+import base64
+import random
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Is loaded as string to improve efficiency and reduce I/O load.
 workflow_dump = """
@@ -201,6 +207,78 @@ workflow_dump = """
 """
 
 
+def validate_api_key(api_key: str) -> tuple[bool, str]:
+    """Validates the API key"""
+    local_api_key = os.getenv("API_KEY")
+
+    if not local_api_key:
+        return False, "API_KEY not found in env"
+
+    if api_key != local_api_key:
+        return False, "API_KEY does not match"
+
+    return True, "OK"
+
+
+def validate_input(event: dict) -> dict:
+    """Validates the input data from the event"""
+    input_data = event["input"]
+
+    is_valid, message = validate_api_key(input_data.get("api_key"))
+    if not is_valid:
+        return {"error": message}
+
+    if not input_data or not input_data.get("image") or not input_data.get("mask"):
+        return {"error": "Both 'image' and 'mask' are required"}
+
+    positive_prompt = "closeup, portrait, epic, movie scene, naked, nude"
+    negative_prompt = "watermark, ugly, clothes"
+
+    return {
+        "mask": input_data.get("mask"),
+        "image": input_data.get("image"),
+        "positive_prompt": input_data.get("positive_prompt") or positive_prompt,
+        "negative_prompt": input_data.get("negative_prompt") or negative_prompt,
+        "seed": input_data.get("seed") or random.randint(0, 2**32 - 1),
+        "steps": input_data.get("steps") or 20,
+        "cfg": input_data.get("cfg") or 8,
+        "denoise": input_data.get("denoise") or 1,
+    }
+
+
+def execute_workflow(
+    positive_prompt: str,
+    negative_prompt: str,
+    seed: int,
+    steps: int,
+    cfg: int,
+    denoise: int,
+) -> dict:
+    """Executes the inpainting workflow"""
+    workflow = modify_workflow_dump(
+        workflow_dump, positive_prompt, negative_prompt, seed, steps, cfg, denoise
+    )
+    server_address = "127.0.0.1:8188"
+    client_id = str(uuid.uuid4())
+    ws = websocket.WebSocket()
+    ws.connect(f"ws://{server_address}/ws?clientId={client_id}")
+    prompt_id = send_prompt_to_comfy(workflow, client_id)["prompt_id"]
+    images = receive_generated_images(ws, prompt_id)
+    ws.close()
+    return images
+
+
+def save_image_to_path(image_data: str | bytes, path: str) -> None:
+    """Saves an image to a filepath"""
+    if isinstance(image_data, str):  # base64
+        image_bytes = base64.b64decode(image_data)
+    else:  # binary
+        image_bytes = image_data
+
+    image = Image.open(io.BytesIO(image_bytes))
+    image.save(path)
+
+
 def send_prompt_to_comfy(prompt: str, client_id: str) -> dict:
     """Sends a prompt to the ComfyUI server and returns the prompt ID"""
     p = {"prompt": prompt, "client_id": client_id}
@@ -209,11 +287,8 @@ def send_prompt_to_comfy(prompt: str, client_id: str) -> dict:
     return json.loads(request.urlopen(req).read())
 
 
-def receive_generated_images(
-    ws: websocket.WebSocket, prompt: str, client_id: str
-) -> dict:
+def receive_generated_images(ws: websocket.WebSocket, prompt_id: str) -> dict:
     """Receives generated images from the ComfyUI server"""
-    prompt_id = send_prompt_to_comfy(prompt, client_id)["prompt_id"]
     output_images = {}
     current_node = ""
     while True:
@@ -238,7 +313,7 @@ def receive_generated_images(
     return output_images
 
 
-def setup_inpainting_workflow(
+def modify_workflow_dump(
     workflow_dump: str,
     positive_prompt: str,
     negative_prompt: str,
@@ -258,30 +333,17 @@ def setup_inpainting_workflow(
     return workflow
 
 
-def convert_binary_to_pil_image(images: dict) -> Image.Image | None:
-    """Converts binary images to PIL images"""
-    for node_id in images:
-        for image_data in images[node_id]:
-            return Image.open(io.BytesIO(image_data))
-    return None
+def create_test_input(image_path: str, mask_path: str, save_path: str) -> None:
+    """Creates a test input JSON file for the handler"""
+    with open(image_path, "rb") as img_file:
+        image_base64 = base64.b64encode(img_file.read()).decode()
 
+    with open(mask_path, "rb") as mask_file:
+        mask_base64 = base64.b64encode(mask_file.read()).decode()
 
-def execute_inpainting_workflow(
-    positive_prompt: str,
-    negative_prompt: str,
-    seed: int,
-    steps: int,
-    cfg: int,
-    denoise: int,
-) -> dict:
-    """Executes the inpainting workflow"""
-    workflow = setup_inpainting_workflow(
-        workflow_dump, positive_prompt, negative_prompt, seed, steps, cfg, denoise
-    )
-    server_address = "127.0.0.1:8188"
-    client_id = str(uuid.uuid4())
-    ws = websocket.WebSocket()
-    ws.connect(f"ws://{server_address}/ws?clientId={client_id}")
-    images = receive_generated_images(ws, workflow, client_id)
-    ws.close()
-    return images
+    test_input = {"input": {"image": image_base64, "mask": mask_base64}}
+
+    with open(save_path, "w") as f:
+        json.dump(test_input, f, indent=2)
+
+    print(f"JSON saved to {save_path}")
