@@ -20,7 +20,6 @@ COPY ComfyUI /ComfyUI
 # Add src files (Worker Template)
 ADD handler.py .
 ADD comfy_serverless.py .
-ADD utils.py .
 ADD test_input.json .
 
 # Create start script for ComfyUI
