@@ -2,10 +2,10 @@
 runpod~=1.7.0
 
 # ComfyUI dependencies
-torch
+# torch
 torchsde
-torchvision
-torchaudio
+# torchvision
+# torchaudio
 numpy>=1.25.0
 einops
 transformers>=4.28.1
@@ -21,6 +21,9 @@ psutil
 
 # ComfyUI testing dependencies:
 websocket-client
+
+# Performance optimizations
+orjson
 
 # ComfyUI Non essential dependencies:
 kornia>=0.7.1

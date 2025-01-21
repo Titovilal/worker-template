@@ -1,4 +1,4 @@
 {
-    "Comfy.DevMode": true,
-    "Comfy.UseNewMenu": "Top"
+    "Comfy.DevMode": false,
+    "Comfy.UseNewMenu": "Disabled"
 }

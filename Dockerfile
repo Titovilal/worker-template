@@ -7,20 +7,21 @@ pip install torch torchvision torchaudio --extra-index-url https://download.pyto
 
 # Install Python dependencies
 COPY requirements.txt /requirements.txt
-RUN echo "Upgrading pip..." && \
-    python3.11 -m pip install --upgrade pip && \
-    echo "Installing dependencies from requirements.txt..." && \
-    python3.11 -m pip install --upgrade -r /requirements.txt --no-cache-dir && \
-    echo "Removing requirements.txt..." && \
-    rm /requirements.txt
+RUN pip install -r /requirements.txt
+# RUN echo "Upgrading pip..." && \
+#     python3.11 -m pip install --upgrade pip && \
+#     echo "Installing dependencies from requirements.txt..." && \
+#     python3.11 -m pip install --upgrade -r /requirements.txt --no-cache-dir && \
+#     echo "Removing requirements.txt..." && \
+#     rm /requirements.txt
 
 # Copy ComfyUI
 COPY ComfyUI /ComfyUI
 
 # Add src files (Worker Template)
 ADD handler.py .
-ADD comfy_serverless.py .
-ADD utils.py .
+# ADD comfy_serverless.py .
+# ADD utils.py .
 ADD test_input.json .
 
 # Create start script for ComfyUI
