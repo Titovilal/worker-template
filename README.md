@@ -2,6 +2,8 @@
 
 A RunPod serverless endpoint for image inpainting using ComfyUI and the Juggernaut XL model.
 
+Note: The project includes a `ComfyUI/extra_model_paths.yaml` file configured to use `runpod-volume` as the models' location, enabling the use of RunPod network volumes for model storage.
+
 ## Features
 
 - Image inpainting using ComfyUI workflows
