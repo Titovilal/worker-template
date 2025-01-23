@@ -104,3 +104,21 @@ python handler.py
 
 - None required for basic operation
 - ComfyUI runs on port 8188 internally
+
+## How the Handler Works
+
+The handler processes requests in the following steps:
+
+1. Receives input data containing the image, mask, and generation parameters
+2. Saves the base64-encoded images as temporary files in `ComfyUI/input`
+3. Sets up the inpainting workflow with user parameters (prompts, seed, steps, etc.)
+4. Connects to ComfyUI via WebSocket
+5. Sends the workflow to ComfyUI and waits for image generation
+6. Receives the generated image through WebSocket
+7. Encodes the result in base64 and returns it
+
+The workflow uses the Juggernaut XL model specifically trained for inpainting, with a predefined node structure that handles:
+- Image loading and masking
+- Prompt encoding
+- Inpainting generation
+- Result stitching and output
